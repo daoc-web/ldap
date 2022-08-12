@@ -52,4 +52,78 @@ En esta parte vamos a instalar y configurar un servidor LDAP en un equipo Ubuntu
     sudo apt-get install slapd ldap-utils
     ```
 
-- ...
+    > Seguramente el instalador le habrá pedido ingresar el password para el usuario "admin". En el siguiente paso podrá modificarlo si desea.
+
+Una vez terminada la instalación, es necesario efectuar una configuración inicial antes de ingresar cualquier información en el directorio, esto sobretodo se debe a que el nombre de dominio que se está utilizando para su directorio es "example.com" y en general se prefiere usar el nombre de dominio oficial de su organización. Este nombre de dominio es importante por que hace las veces de raíz del árbol de información, y estará integrado a todos los objetos que cree.
+
+> Si no tiene nombre de dominio oficial (o si solo está haciendo pruebas) no hay realmente problema, puede usar el dominio que usted desee, o dejar example.com (si deja example.com ni siquiera necesitaría hacer una nueva configuración).
+
+- Configure OpenLDAP
+
+    ```
+    sudo dpkg-reconfigure slapd
+    ```
+
+Al hacer esto deberá responder un par de preguntas:
+> Las respuestas específicas Yes/No podrían cambiar de acuerdo a sus necesidades, pero si las cambia averigue bien lo que va a hacer!
+
+- Omit OpenLDAP server configuration? \<No>
+- DNS domain name: (por ejemplo "pollos.com")
+- Organization name: (por ejemplo "Pollos Refritos")
+- Administrator password: (por ejemplo "12345678")
+- Confirm password: (debe ser igual al anterior)
+- Do you want the database to be removed when slapd is purged? \<No>
+- Move old database? \<Yes>
+
+Ahora vamos a inhabilitar el acceso anónimo a ldap
+
+> este paso no es imprescindible, pero es muy recomendable sobretodo si su servidor es de acceso público
+
+- Cree un archivo con extensión *.ldif* e ingrese el siguiente contenido (puede usar [ldap_disallow_anonymous.ldif]()):
+
+```
+dn: cn=config
+changetype: modify
+add: olcDisallows
+olcDisallows: bind_anon
+
+dn: cn=config
+changetype: modify
+add: olcRequires
+olcRequires: authc
+
+dn: olcDatabase={-1}frontend,cn=config
+changetype: modify
+add: olcRequires
+olcRequires: authc
+```
+
+- Ejecute esta instrucción:
+
+> Se asume que guardó el archivo en */home/yo/*. Si no es así modifique el path acorde
+
+```
+sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /home/yo/ldap_disallow_anonymous.ldif
+```
+
+Ahora vamos a habilitar las conexiones seguras por TLS
+
+- El acceso seguro, ldaps://, se efectua por el puerto 636, que debe abrirse en el firewal.
+- Por defecto OpenLDAP no escucha en este puerto, de manera que debe abrir el archivo */etc/default/slapd*, y modificar la línea
+
+    ```
+    SLAPD_SERVICES="ldap:/// ldapi:///"
+    ```
+
+    Para añadir "ldaps:///"
+
+    ```
+    SLAPD_SERVICES="ldap:/// ldaps:/// ldapi:///"
+    ```
+
+- Y ahora hay que resetear el servicio
+
+    ```
+    sudo service slapd restart
+    ```
+
