@@ -79,7 +79,7 @@ Ahora vamos a inhabilitar el acceso anónimo a ldap
 
 > este paso no es imprescindible, pero es muy recomendable sobretodo si su servidor es de acceso público
 
-- Cree un archivo con extensión *.ldif* e ingrese el siguiente contenido (puede usar [ldap_disallow_anonymous.ldif]()):
+- Cree un archivo con extensión *.ldif* e ingrese el siguiente contenido (puede usar [ldap_disallow_anonymous.ldif](ldap_disallow_anonymous.ldif)):
 
 ```
 dn: cn=config
@@ -121,7 +121,7 @@ Ahora vamos a habilitar las conexiones seguras porSSL/TLS
     SLAPD_SERVICES="ldap:/// ldaps:/// ldapi:///"
     ```
 
-- Para permitir conecciones seguras es necesario que su servidor LDAP cuente con un certificado. Si su servidor ya ofrecía conexiones seguras, por ejemplo por HTTPS, entonces ya tiene un certificado y solo debe configurar su servidor para reutilizarlo. Si no, hay varias alternativas:
+- Para permitir conecciones seguras es necesario que su servidor LDAP cuente con un certificado. Si su equipo ya ofrecía conexiones seguras, por ejemplo por HTTPS, entonces ya tiene un certificado y solo debe configurar su servidor para reutilizarlo. Si no, hay varias alternativas:
     - Si ya tiene un nombre de dominio propio, puede conseguir un certificado oficial gratuito con [Let's Encrypt](https://letsencrypt.org/)
         - Si no tiene un nombre de dominio propio, pero tiene una IP fija, puede conseguir un dominio gratuitamente en [FreeNom](https://www.freenom.com/)
     - Si su IP es variable, como sucede en una red personal o en su casa, puede conseguir un dominio con [No-Ip](https://www.noip.com/), quienes también le ofrecen un certificado gratuito.
@@ -144,7 +144,7 @@ Ahora vamos a habilitar las conexiones seguras porSSL/TLS
         sudo chmod 640 /home/yo/certs/privkey.pem
         ```
 
-- Cree un archivo con extensión *.ldif* e ingrese el siguiente contenido (puede usar [ldap_enable_tls.ldif]()):
+- Cree un archivo con extensión *.ldif* e ingrese el siguiente contenido (puede usar [ldap_enable_tls.ldif](ldap_enable_tls.ldif)):
 
 ```
 dn: cn=config
