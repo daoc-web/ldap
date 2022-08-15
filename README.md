@@ -106,24 +106,83 @@ olcRequires: authc
 sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /home/yo/ldap_disallow_anonymous.ldif
 ```
 
-Ahora vamos a habilitar las conexiones seguras por TLS
+Ahora vamos a habilitar las conexiones seguras porSSL/TLS
 
-- El acceso seguro, ldaps://, se efectua por el puerto 636, que debe abrirse en el firewal.
-- Por defecto OpenLDAP no escucha en este puerto, de manera que debe abrir el archivo */etc/default/slapd*, y modificar la línea
+- El acceso seguro, ldaps://, se efectua por el puerto 636, que debe abrirse en el firewall.
+- Por defecto OpenLDAP no escucha en este puerto, de manera que debe abrir el archivo */etc/default/slapd*, y modificar la línea donde se encuentra la variable SLAPD_SERVICES:
 
     ```
     SLAPD_SERVICES="ldap:/// ldapi:///"
     ```
 
-    Para añadir "ldaps:///"
+    Para añadir "ldaps:///", de manera que quede así:
 
     ```
     SLAPD_SERVICES="ldap:/// ldaps:/// ldapi:///"
     ```
 
-- Y ahora hay que resetear el servicio
+- Para permitir conecciones seguras es necesario que su servidor LDAP cuente con un certificado. Si su servidor ya ofrecía conexiones seguras, por ejemplo por HTTPS, entonces ya tiene un certificado y solo debe configurar su servidor para reutilizarlo. Si no, hay varias alternativas:
+    - Si ya tiene un nombre de dominio propio, puede conseguir un certificado oficial gratuito con [Let's Encrypt](https://letsencrypt.org/)
+        - Si no tiene un nombre de dominio propio, pero tiene una IP fija, puede conseguir un dominio gratuitamente en [FreeNom](https://www.freenom.com/)
+    - Si su IP es variable, como sucede en una red personal o en su casa, puede conseguir un dominio con [No-Ip](https://www.noip.com/), quienes también le ofrecen un certificado gratuito.
+    - Puede generar un certificado "self-signed". Esta opción da problemas con clientes que se conectan desde el internet, ya que estos certificados no se pueden validar, al no ser generados por una autoridad reconocida. Para redes locales, sin embargo, funciona bien. [Aquí tiene una guía](https://github.com/daoc/TLS-certificates).
+    - Obviamente tiene muchas alternativas pagadas!
+
+- Una vez con su certificado, debe asegurarse que cuenta con los tres archivos requeridos:
+    - El certificado del servidor (supongamos que está en el archivo */home/yo/certs/cert.pem*).
+    - La clave privada de dicho certificado (supongamos que está en el archivo */home/yo/certs/privkey.pem*).
+    - La cadena completa de certificados de la CA (Certificate Authority) que emitió el certificado (supongamos que está en el archivo */home/yo/certs/fullchain.pem*).
+
+- Es necesario verificar que el usuario **openldap** pueda leer la clave privada. Para esto puede seguir estos pasos:
+    - Añada openldap al grupo **ssl-cert**
+        ```
+        sudo usermod -a -G ssl-cert openldap
+        ```
+    - Cambie los permisos al archivo
+        ```
+        sudo chown :ssl-cert /home/yo/certs/privkey.pem
+        sudo chmod 640 /home/yo/certs/privkey.pem
+        ```
+
+- Cree un archivo con extensión *.ldif* e ingrese el siguiente contenido (puede usar [ldap_enable_tls.ldif]()):
+
+```
+dn: cn=config
+changetype: modify
+add: olcTLSCACertificateFile
+olcTLSCACertificateFile: /home/yo/certs/fullchain.pem
+-
+add: olcTLSCertificateKeyFile
+olcTLSCertificateKeyFile: /home/yo/certs/privkey.pem
+-
+add: olcTLSCertificateFile
+olcTLSCertificateFile: /home/yo/certs/cert.pem
+```
+
+- Ejecute esta instrucción:
+
+> Se asume que guardó el archivo en */home/yo/*. Si no es así modifique el path acorde
+
+```
+sudo ldapmodify -H ldapi:// -Y EXTERNAL -f /home/yo/ldap_enable_tls.ldif
+```
+
+- Reinicie el servicio
 
     ```
     sudo service slapd restart
+    ```
+
+- Cruce los dedos y pruebe alguna consulta simple desde el terminal
+
+    ```
+    ldapwhoami -W -D cn=admin,dc=pollos,dc=com -H ldaps://pollos.com
+    ```
+
+    El sistema le pedirá su password y si todo va bien responderá:
+
+    ```
+    Enter LDAP Password:
+    dn:cn=admin,dc=pollos,dc=com
     ```
 

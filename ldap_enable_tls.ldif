@@ -1,0 +1,10 @@
+dn: cn=config
+changetype: modify
+add: olcTLSCACertificateFile
+olcTLSCACertificateFile: /home/yo/certs/fullchain.pem
+-
+add: olcTLSCertificateKeyFile
+olcTLSCertificateKeyFile: /home/yo/certs/privkey.pem
+-
+add: olcTLSCertificateFile
+olcTLSCertificateFile: /home/yo/certs/cert.pem
