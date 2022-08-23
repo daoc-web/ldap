@@ -36,7 +36,7 @@ Estos directorios son similares a una base de datos configurada para realizar b�
 
 En esta parte vamos a instalar y configurar un servidor LDAP en un equipo Ubuntu.
 
-> Ref: https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-openldap-and-phpldapadmin-on-ubuntu-16-04
+> Esta es una referencia general bastante buena: https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-openldap-and-phpldapadmin-on-ubuntu-16-04
 
 > Puede hacerse en cualquier equipo Linux, desktop o server, físico o virtual, pero estas instrucciones utilizan el estilo Debian y están centradas en Ubuntu.
 
@@ -186,3 +186,22 @@ sudo ldapmodify -H ldapi:// -Y EXTERNAL -f /home/yo/ldap_enable_tls.ldif
     dn:cn=admin,dc=pollos,dc=com
     ```
 
+### phpLDAPadmin
+
+Hay algunas utilidades que se puede usar para revisar o modificar la información que se encuentra en el directorio. Una de las más utilizadas es phpLDAPadmin (que lastimosamente no está tan actualizada).
+
+Puede instalar esta utilidad directamente en su servidor Apache mediante:
+
+```
+sudo apt install phpldapadmin
+```
+
+El sitio web de la utilidad es este: http://phpldapadmin.sourceforge.net/
+
+> Sin embargo, no funciona bien con php8.1
+
+Otra forma que evita problemas de compatibilidad entre programas, es mediante Docker. 
+
+La imagen se encuentra aquí: https://hub.docker.com/r/osixia/phpldapadmin/
+
+Las instrucciones para su uso están aquí: https://github.com/osixia/docker-phpLDAPadmin
