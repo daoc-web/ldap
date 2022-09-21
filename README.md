@@ -106,7 +106,7 @@ olcRequires: authc
 sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /home/yo/ldap_disallow_anonymous.ldif
 ```
 
-Ahora vamos a habilitar las conexiones seguras porSSL/TLS
+Ahora vamos a habilitar las conexiones seguras por SSL/TLS
 
 - El acceso seguro, ldaps://, se efectua por el puerto 636, que debe abrirse en el firewall.
 - Por defecto OpenLDAP no escucha en este puerto, de manera que debe abrir el archivo */etc/default/slapd*, y modificar la línea donde se encuentra la variable SLAPD_SERVICES:
@@ -121,7 +121,7 @@ Ahora vamos a habilitar las conexiones seguras porSSL/TLS
     SLAPD_SERVICES="ldap:/// ldaps:/// ldapi:///"
     ```
 
-- Para permitir conecciones seguras es necesario que su servidor LDAP cuente con un certificado. Si su equipo ya ofrecía conexiones seguras, por ejemplo por HTTPS, entonces ya tiene un certificado y solo debe configurar su servidor para reutilizarlo. Si no, hay varias alternativas:
+- Para permitir conexiones seguras es necesario que su servidor LDAP cuente con un certificado. Si su equipo ya ofrecía conexiones seguras, por ejemplo por HTTPS, entonces ya tiene un certificado y solo debe configurar su servidor para reutilizarlo. Si no, hay varias alternativas:
     - Si ya tiene un nombre de dominio propio, puede conseguir un certificado oficial gratuito con [Let's Encrypt](https://letsencrypt.org/)
         - Si no tiene un nombre de dominio propio, pero tiene una IP fija, puede conseguir un dominio gratuitamente en [FreeNom](https://www.freenom.com/)
     - Si su IP es variable, como sucede en una red personal o en su casa, puede conseguir un dominio con [No-Ip](https://www.noip.com/), quienes también le ofrecen un certificado gratuito.
@@ -179,6 +179,11 @@ sudo ldapmodify -H ldapi:// -Y EXTERNAL -f /home/yo/ldap_enable_tls.ldif
     ldapwhoami -W -D cn=admin,dc=pollos,dc=com -H ldaps://pollos.com
     ```
 
+    >- ldapwhoami simplemente verifica los datos del usuario que se conecta
+    >- -H indica el host al cual conectarse
+    >- -D indica el dn (distinguished name) del usuario con el que se va a conectar
+    >- -W pide el password del usuario
+
     El sistema le pedirá su password y si todo va bien responderá:
 
     ```
@@ -205,3 +210,54 @@ Otra forma que evita problemas de compatibilidad entre programas, es mediante Do
 La imagen se encuentra aquí: https://hub.docker.com/r/osixia/phpldapadmin/
 
 Las instrucciones para su uso están aquí: https://github.com/osixia/docker-phpLDAPadmin
+
+### Organización de la información en LDAP
+
+LDAP guarda la información en un árbol jerárquico llamado DIT (Data Information Tree), compuesto de entradas.
+
+Las entradas del árbol representan las entidades de las cuales nos interesa guardar información. Estas entradas pueden ser personas, departamentos, equipos o cualquier tipo de recurso en general.
+
+Una entrada está compuesta de uno o más atributos, que guardan la información de la entidad en pares clave=valor.
+
+Los atributos en una entrada no son arbitrarios y dependen de las clases asignadas a la entrada. Estas clases definen los atributos obligatorios y opcionales que compondrán la entidad. Las clases de una entidad se definen como otro atributo, y debe haber una (y solo una) clase estructural y cero o más clases auxiliares. Las clases también tienen una jerarquía, y una clase puede heredar de otra, adoptando sus atributos.
+
+Cada entrada debe proporcionar un grupo de atributos que la identifiquen de forma única, esto se conoce como el distinguished name (DN). El DN consta de uno o más atributos propios de la entidad, más el DN de todas sus entradas antecesoras hasta la raíz.
+
+La raíz del DIT es la organización, definida por los componentes de su nombre de dominio. Al configurar el sistema se nos pidió esta información, que en el ejemplo fue *pollos.com*. Este nombre de dominio se separa en sus componentes, generando el DN: `dn: dc=pollos,dc=com`.
+
+>- `dn` es la clave del atributo distinguished name, y todo lo que va luego de los dos puntos es su valor. En este caso, el valor está constituido de dos atributos `dc`.
+>- `dc` significa domain component. Cuando hay más de un atributo componiendo un valor, se los separa por comas.
+
+La información completa de esta entrada, según el ejemplo dado al configurar el sistema sería:
+
+```ldap
+dn: dc=pollos,dc=com
+dc: pollos
+objectclass: organization
+o: Pollos Refritos
+```
+
+> Podemos ver un atributo por línea, donde:
+>- primero va el DN completo, que es el identificador de la entrada `dn: dc=pollos,dc=com`
+>- luego va el DN relativo (o específico) de esta entrada `dc: pollos`
+>- a continuación vemos la clase que define los atributos adicionales de la entrada `objectclass: organization`
+>- finalmente tenemos el atributo `o` (organizationName) que está definido en la clase `o: Pollos Refritos`
+
+Tomemos como otro ejemplo la información de la entrada correspondiente al usuario `admin`, que también definimos al configurar el sistema. Esta entrada está inmediatamente bajo la organización:
+
+```ldap
+dn: cn=admin,dc=pollos,dc=com
+cn: admin
+description: LDAP administrator
+objectclass: simpleSecurityObject
+objectclass: organizationalRole
+userpassword: {SSHA}xyzxyzxyzxyz
+```
+
+>- El DN se define con el DN relativo de esta entrada, añadido al DN de los ancestros. En este caso el único ancestro es la organización
+>- `cn` (commonName) es el atributo que define el nombre del usuario. Se usa ese atributo debido a la clase `organizationRole`.
+>   - `admin` no es más que una parte del identificador de la entrada. Para usarlo, por ejemplo para conectarse a LDAP y hacer consultas, hay que usar el DN completo: `cn=admin,dc=pollos,dc=com`
+>- `objectclass: simpleSecurityObject` se añade como clase auxiliar para poder contar con el atributo `userpassword`
+>- `objectclass: organizationalRole` es la clase estructural
+>- `userpassword` guarda el hash del password: `{SSHA}xyzxyzxyzxyz`
+
