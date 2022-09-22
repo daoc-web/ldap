@@ -285,3 +285,83 @@ flowchart TB
     C --- E(cn=pedro);
     D --- F(cn=maria);
 ```
+
+Para las unidades vamos a utilizar la siguiente definición:
+
+```ldap
+dn: ou=soporte,dc=pollos,dc=com
+ou: soporte
+objectClass: organizationalUnit
+
+dn: ou=sistemas,dc=pollos,dc=com
+ou: sistemas
+objectClass: organizationalUnit
+```
+
+> La clase estructural es `organizationalUnit`, la cual define el atributo obligatorio `ou` (organizationalUnitName). `ou` será el DN relativo de estas dos entradas.
+>- fíjese en que es necesario definir el DN completo de cada entrada!
+
+Para ingresar la información al directorio se puede utilizar la opción *import* en phpLDAPadmin, y simplemente pegar el texto en el campo que se presenta (o, claro, usar directamente las funciones de la interfaz, para lo cual se le desea mucha suerte).
+
+La forma que se va a ver aquí es usando el comando *ldapadd* desde el terminal. Para ello grabe la definición en un archivo ldif (supongamos /home/yo/units.ldif) y ejecute el comando:
+
+```sh
+ldapadd -H ldapi:// -D cn=admin,dc=pollos,dc=com -W -f /home/yo/units.ldif
+```
+
+>- `-H ldapi://` solo se puede usar si estamos dentro del mismo servidor. Si estamos desde otro equipo abrá que usar `-H ldaps://pollos.com`
+>- `-D cn=admin,dc=pollos,dc=com` es el DN del usuario admin y `-W` indica que se deberá ingresar el password de manera interactiva (lo mejor para que no se vea en el terminal)
+>- `-f /home/yo/units.ldif` indica el archivo donde está la definición que se va a añadir
+
+Ahora, para los usuarios se va a usar esta definición:
+
+```ldap
+dn: cn=pedro,ou=soporte,dc=pollos,dc=com
+cn: pedro
+objectclass: simpleSecurityObject
+objectclass: organizationalRole
+userpassword: {SSHA}ytiQAVoiRnaJjYgJVL3pnpvSr3XCy1az
+
+dn: cn=maria,ou=sistemas,dc=pollos,dc=com
+cn: maria
+objectclass: simpleSecurityObject
+objectclass: organizationalRole
+userpassword: {SSHA}vpCa6IOZAy7erj9LhU/48lRfZ8OlejBc
+```
+
+> Los passwords en el ejemplo son "pedro" y "maria" respectivamente (igual que el nombre de usuario). Si bien se podrían guardar en claro, siempre se debe guardar un hash por seguridad. En este caso se está generando el hash con SSHA (SHA con semilla)
+>- Usted puede generar los hash desde el terminal con slappasswd, como se muestra a continuación. `-h` define el tipo de hash a generar, y `-s` indica el password en claro.
+>   - `slappasswd -h {SSHA} -s pedro`
+>       > si usted ejecuta este comando verá que el hash es diferente al que se puso en la definición, por que la semilla cambia en cada ejecución de slappasswd (más seguridad!).
+
+Para ingresar esta definición al sistema se hace igual que en el ejemplo anterior de las unidades. Si grabó la definición en /home/yo/users.ldif, ejecute el comando:
+
+```sh
+ldapadd -H ldapi:// -D cn=admin,dc=pollos,dc=com -W -f /home/yo/users.ldif
+```
+
+#### Buscar información en el directorio
+
+Para buscar información dentro del directorio desde el terminal (puede usar también phpLDAPadmin, por supuesto), se usa el comando *ldapsearch*. A continuación algunos ejemplos.
+
+Si desea recuperar todas las entradas en el directorio puede utilizar:
+
+```sh
+ldapsearch -H ldapi:// -D cn=admin,dc=pollos,dc=com -W -b dc=pollos,dc=com -s sub "(objectclass=*)"
+```
+
+>- los operadores `-H -D y -W` son igual que con *ldapadd*
+>- `-b` indica la base, o a partir de dónde se quiere iniciar la búsqueda. Aquí se está indicando la raíz del árbol, pero puede iniciar desde cualquier entrada, indicando su DN
+>- `-s` proporciona el parámetro de búsqueda. En primer lugar puede especificar `sub`, `one` o `base`. sub indica que se buscará en todo el sub árbol, one indica que solo se buscará hasta un nivel bajo la base y base que sólo se buscará la base misma. Luego se indica entre comillas los atributos que se va a filtrar. Cada atributo va entre paréntesis. En este ejemplo se indica que se busca las entradas con un atributo `objectclass` de cualquier valor (`*`). Como todas las entradas deben tener al menos una clase, esta búsqueda devuelve todas las entradas.
+>   - Este ejemplo podría simplificar aún más la opción -s, poniendo solamente `-s sub` (sin filtro)
+
+Como se ve, la combinación de `-b` y `-s` nos permite encontrar entradas específicas. Si por ejemplo desea encontrar todos los usuarios dentro de la unidad "soporte", puede usar:
+
+```sh
+ldapsearch -H ldapi:// -D cn=admin,dc=pollos,dc=com -W -b ou=soporte,dc=pollos,dc=com -s sub "(cn=*)"
+```
+
+Puede ver muchas más alternativas [aquí](https://docs.ldap.com/ldap-sdk/docs/tool-usages/ldapsearch.html)
+
+#### Autenticación y autorización
+
