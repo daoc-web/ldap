@@ -272,3 +272,16 @@ Al momento el ejemplo contiene solo dos entradas:
 flowchart TB
     A(dc=pollos,dc=com) --- B(cn=admin);
 ```
+
+> Por facilidad los DN se presentarán sólo con el componente relativo. Recuerde que un DN completo se concatena con los DN relativos de todos los antecesores.
+
+En primer lugar se va a incluir dos departamentos o unidades de la organización: soporte y sistemas. Dentro de estos se va a incluir un par de usuarios: pedro en soporte y maria en sistemas:
+
+```mermaid
+flowchart TB
+    A(dc=pollos,dc=com) --- B(cn=admin);
+    A --- C(ou=soporte);
+    A --- D(ou=sistemas);
+    C --- E(cn=pedro);
+    D --- F(cn=maria);
+```
