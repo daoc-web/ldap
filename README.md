@@ -240,10 +240,10 @@ o: Pollos Refritos
 > Podemos ver un atributo por línea, donde:
 >- primero va el DN completo, que es el identificador de la entrada `dn: dc=pollos,dc=com`
 >- luego va el DN relativo (o específico) de esta entrada `dc: pollos`
->- a continuación vemos la clase que define los atributos adicionales de la entrada `objectclass: organization`
->- finalmente tenemos el atributo `o` (organizationName) que está definido en la clase `o: Pollos Refritos`
+>- a continuación vemos la clase estructural que define el tipo de la entrada `objectclass: organization`
+>- finalmente tenemos el atributo `o` (organizationName): `o: Pollos Refritos`, que está definido en la clase `organization`
 
-Tomemos como otro ejemplo la información de la entrada correspondiente al usuario `admin`, que también definimos al configurar el sistema. Esta entrada está inmediatamente bajo la organización:
+Tomemos como otro ejemplo la información de la entrada correspondiente al usuario `admin`, que también definimos al configurar el sistema. Esta entrada es hijo directo de la organización:
 
 ```ldap
 dn: cn=admin,dc=pollos,dc=com
@@ -255,9 +255,20 @@ userpassword: {SSHA}xyzxyzxyzxyz
 ```
 
 >- El DN se define con el DN relativo de esta entrada, añadido al DN de los ancestros. En este caso el único ancestro es la organización
->- `cn` (commonName) es el atributo que define el nombre del usuario. Se usa ese atributo debido a la clase `organizationRole`.
+>- `cn` (commonName) es el atributo que define el nombre del usuario. Se usa ese atributo debido a la clase `organizationRole`, donde es obligatorio.
 >   - `admin` no es más que una parte del identificador de la entrada. Para usarlo, por ejemplo para conectarse a LDAP y hacer consultas, hay que usar el DN completo: `cn=admin,dc=pollos,dc=com`
+>- `description` es un atributo opcional de `organizationRole`
 >- `objectclass: simpleSecurityObject` se añade como clase auxiliar para poder contar con el atributo `userpassword`
 >- `objectclass: organizationalRole` es la clase estructural
 >- `userpassword` guarda el hash del password: `{SSHA}xyzxyzxyzxyz`
 
+#### Añadir información al directorio
+
+Como se dijo anteriormente, en un directorio LDAP se puede guardar una gran variedad de información. Sin embargo, dado que el tema que más compete, y probablemente para lo que más se usa LDAP, es para autenticación y autorización, se va a ejemplificar el ingreso de información de cuentas de usuario (cabe aclarar que de la misma manera se ingresa cualquier tipo de dato).
+
+Al momento el ejemplo contiene solo dos entradas:
+
+```mermaid
+graph X;
+    A[dc=pollos,dc=com] --> B[cn=admin];
+```
