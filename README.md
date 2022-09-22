@@ -269,6 +269,6 @@ Como se dijo anteriormente, en un directorio LDAP se puede guardar una gran vari
 Al momento el ejemplo contiene solo dos entradas:
 
 ```mermaid
-graph X;
-    A[dc=pollos,dc=com] --> B[cn=admin];
+flowchart TB
+    A(dc=pollos,dc=com) --- B(cn=admin);
 ```
