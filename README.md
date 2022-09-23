@@ -365,3 +365,72 @@ Puede ver muchas más alternativas [aquí](https://docs.ldap.com/ldap-sdk/docs/t
 
 #### Autenticación y autorización
 
+Autenticar un usuario y autorizarlo a efectuar alguna acciónm, está en manos de la aplicación. El directorio simplemente nos da la información que le pedimos. No dice si el usuario existe y el password es correcto, y nos proporciona la información de unidad o rol que se pide. La aplicación usa esa infromación para tomar sus decisiones.
+
+Dicho esto, cada aplicación deberá implementar este proceso de manera particular, dependiendo sobre todo de cómo sus librerías le permiten interactuar con LDAP para solicitar información. Si quisiéramos autenticar un usuario desde el terminal, por ejemplo, podemos usar *ldapwhoami*:
+
+```sh
+ldapwhoami -D cn=pedro,ou=soporte,dc=pollos,dc=com -w pedro
+```
+
+> Si el DN del usuario existe y es correcto, y el password puesto con la opción `-w` también es correcto, entonces veremos como resultado devuelto el DN del usuario:
+    ```
+    dn:cn=pedro,ou=soporte,dc=pollos,dc=com
+    ```
+Caso contrario veremos un mensaje de error:
+    ```
+    ldap_bind: Invalid credentials (49)
+    ```
+
+> Nótese también la diferencia entre `-W` y `-w`: en mayúscula pide el password interactivamente (no se verá en el terminal), en minúscula se debe incluir en el comando
+
+Ahora tomemos como ejemplo una aplicación web que se está ejecutando sobre un servidor Apache. Si dicha aplicación fue diseñada sin ningún tipo de seguridad, podemos incluirsela sin necesidad de modificarla, simplemente modificando la configuración de Apache.
+
+Primero se debe activar el módulo ldap en apache con el comando `sudo a2enmod ldap authnz_ldap` y luego resetearlo con `sudo service apache2 restart`.
+
+Supongamos que la aplicación que queremos asegurar está cargada en el directorio */var/www/html/miapp*:
+
+- primero debemos ubicar el archivo de configuración de Apache, que suele estar en el directorio */etc/apache2/sites-enabled/*. El nombre del archivo puede ser *000-default.conf*
+- dentro del archivo se debe buscar el elemento *VirtualHost*, que podría ser algo así `<VirtualHost _default_:443>`, indicando que configura el acceso por https (puerto 443).
+    - como se están transfiriendo contraseñas, el acceso DEBE ser por https
+- Al final de *VirtualHost* se debe añadir la configuración dentro de un elemento *Directory*, como por ejemplo:
+
+```apache
+<Directory /var/www/html/miapp>
+    AuthName "LDAP Authentication"
+    AuthType Basic
+    AuthBasicProvider ldap
+    AuthLDAPBindDN cn=admin,dc=pollos,dc=com
+    AuthLDAPBindPassword pwd_admin
+    AuthLDAPURL "ldaps://pollos.com/dc=pollos,dc=com?cn"
+    Require valid-user
+</Directory>
+```
+
+>- En el encabezado del elemento `Directory` se añade el directorio de la aplicación que se va a configurar
+>- `AuthName` define el ámbito de la aplicación. El servidor le pedirá al cliente una sola vez las credenciales por cada ámbito
+>- `AuthType Basic` indica el modo de envío de credenciales hacia el servidor. El modo `Basic` las envía en claro, por lo que es imprescindible que la conexión se realice por https
+>-  `AuthBasicProvider ldap` indica que se usará LDAP
+>- `AuthLDAPBindDN` indica el DN del usuario que se conectará a ldap para validar las credenciales del cliente
+>- `AuthLDAPBindPassword` indica el password del usuario definido en AuthLDAPBindDN
+>   - AuthLDAPBindDN y AuthLDAPBindPassword no son necesarios si se dejó activa la posibilidad de conexión anónima en LDAP
+>- `AuthLDAPURL` es el parámetro de búsqueda en formato de URL: `ldaps://pollos.com/dc=pollos,dc=com?cn`. Aquí se usa el protocolo `ldaps`, el servidor es `pollos.com`, la base es `dc=pollos,dc=com`, los parámetros se separan con `?` y se indica que el atributo donde se buscará el nombre del usuario es `cn`
+>- `Require valid-user` indica que cualquier usuario que logre autenticarse, estará autorizado a ingresar a la aplicación
+
+- Luego de guardar el archivo con la configuración hay que actualizarla en apache, lo que se puede hacer con el comando `sudo service apache2 reload`
+
+Si por ejemplo quisiéramos que solo los usuarios en la unidad soporte pudieran usar esta aplicación, podríamos modificar la base en el `AuthLDAPURL`:
+
+```apache
+AuthLDAPURL "ldaps://pollos.com/ou=soporte,dc=pollos,dc=com?cn"
+```
+
+> si prueba esto, maría ya no podrá conectarse, solo pedro
+
+Si ahora quisiéramos que solo los usuarios ana y juan (habría que ingresarlos) pudieran acceder, podríamos modificar el `Require`:
+
+```apache
+Require ldap-user ana juan
+```
+
+Puede ver más alternativas [aquí](https://httpd.apache.org/docs/2.4/mod/mod_authnz_ldap.html)
