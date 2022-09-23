@@ -434,3 +434,52 @@ Require ldap-user ana juan
 ```
 
 Puede ver más alternativas [aquí](https://httpd.apache.org/docs/2.4/mod/mod_authnz_ldap.html)
+
+Si se prefiere contactar a LDAP desde la misma aplicación también se puede hacer, pero el mecanismo variará dependiendo del lenguaje de programación que utilice. A continuación se presenta un ejemplo de cómo hacerlo con PHP. Analícelo!:
+
+```php
+<?php
+//Se asume que el script está en la página ldap.php
+
+if(isset($_GET['logout'])) {
+    header('HTTP/1.1 401 Unauthorized');
+    die('Logged out. <a href="./ldap.php">Reintente</a>');
+}
+
+if (!isset($_SERVER['PHP_AUTH_USER'])) {
+    header('WWW-Authenticate: Basic realm="LDAP Authentication"');
+    header('HTTP/1.0 401 Unauthorized');
+    die('Ingrese un usuario y password válidos');
+}
+
+$usr = $_SERVER['PHP_AUTH_USER'];
+$pwd = $_SERVER['PHP_AUTH_PW'];
+
+$ldapconn = ldap_connect("ldaps://pollos.com")
+        or die("No es posible conectarse al servidor");
+
+ldap_set_option($ldapconn, LDAP_OPT_PROTOCOL_VERSION, 3);
+
+$ldapbind = ldap_bind($ldapconn, "cn=admin,dc=pollos,dc=com", "pwd_admin")
+        or die("LDAP bind fallido XXX" );
+
+$result = ldap_search($ldapconn, "dc=pollos,dc=com", "(cn=$usr)")
+        or die ("Error in search query: ".ldap_error($ldapconn));
+		
+$entries = ldap_get_entries($ldapconn, $result);
+
+if($entries["count"] < 1) {
+        die("No existe el usuario indicado XXX");
+}
+if($entries["count"] > 1) {
+        die("El usuario no es único XXX");
+}
+
+$ldapbind = ldap_bind($ldapconn, $entries[0]["dn"], $pwd)
+        or die("Malas credenciales XXX");
+
+print($entries[0]["dn"]." Autenticado!");
+print("<br>Ahora puede autorizar ;)");
+print('<br><a href="./ldap.php?logout">Logout</a>');
+?>
+```
